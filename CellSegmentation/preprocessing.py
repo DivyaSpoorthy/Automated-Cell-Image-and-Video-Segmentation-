@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-class PreProcessing(object):
+class PreProcessing:
 
     def __init__(self, images):
         self.images = images
