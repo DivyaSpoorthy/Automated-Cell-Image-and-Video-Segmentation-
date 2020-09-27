@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-class PreProcessing:
+class preprocessing:
 
     def __init__(self, images):
         self.images = images
@@ -46,5 +46,4 @@ class PreProcessing:
         Color = [b[0], g[0], r[0]]
 
         return np.array(Color)
-
 

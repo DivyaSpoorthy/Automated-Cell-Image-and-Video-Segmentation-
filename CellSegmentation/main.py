@@ -6,7 +6,7 @@ PATH = "data_2"
 
 
 def image_formats():
-    return [".tif"]
+    return [".png"]
 
 class PreProcessing:
 
@@ -17,7 +17,6 @@ class PreProcessing:
         kernel = np.array([[-1, -1, -1], [-1, 3, -1], [-1, -1, -1]])
         images_after_eqalization = []
         for images in self.images:
-            # clahe = cv2.createCLAHE(clipLimit=1000, tileGridSize=(10, 10))
             images_after_eqalization.append(cv2.equalizeHist(images))
         return np.array(images_after_eqalization)
 
@@ -54,6 +53,70 @@ class PreProcessing:
         return np.array(Color)
 
 
+class DBSCAN:
+
+    def process(self, threeD_reshaped_image, epsilon, min_pts, intensity_threshold):
+        Label = np.zeros(threeD_reshaped_image[:, :, 0].shape, dtype=int)
+        C = 0
+        for i in range(threeD_reshaped_image.shape[0]):
+            print("itr:" + str(i))
+            for j in range(threeD_reshaped_image.shape[1]):
+
+                if Label[i][j] >= 1:
+                    continue
+                # print(i, j)
+                dimension = (2 * epsilon) + 1
+                neighbour_pix = []
+
+                neighbour_count, neighbour_pix = self.neighbourhoodPoints(
+                    threeD_reshaped_image,
+                    epsilon, i, j, intensity_threshold)
+
+                if neighbour_count < min_pts:
+                    Label[i][j] = -1
+                    continue
+                C = C + 30
+                Label[i][j] = C
+
+                if (i, j) in neighbour_pix:
+                    neighbour_pix.remove((i, j))
+                for neighbour_pixel in neighbour_pix:
+
+                    if Label[neighbour_pixel[0]][neighbour_pixel[1]] == -1:
+                        Label[neighbour_pixel[0]][neighbour_pixel[1]] = C
+                    if Label[neighbour_pixel[0]][neighbour_pixel[1]] != 0:
+                        continue
+                    Label[neighbour_pixel[0]][neighbour_pixel[1]] = C
+                    expanded_neighbour_count, expanded_neighbours = self.neighbourhoodPoints(threeD_reshaped_image, epsilon,
+                                                                                        neighbour_pixel[0],
+                                                                                        neighbour_pixel[1],
+                                                                                        intensity_threshold)
+                    if expanded_neighbour_count >= min_pts:
+                        neighbour_pix.extend(expanded_neighbours)
+
+        cv2.imwrite("DBSCAN_1.png", Label)
+
+    def neighbourhoodPoints(self, matrix, eps, index1, index2, threshold):
+        matrix = np.array(matrix)
+        padded_matrix = np.pad(matrix, (eps, eps), 'constant', constant_values=(999999))
+
+        n = (2 * eps) + 1
+        neighbours_cnt = 0
+        neighbour_pixels = []
+        comparing_pixel = padded_matrix[eps + index1][eps + index2]
+        for i in range(n):  # will always include the point in itself
+            for j in range(n):
+                current_pixel = padded_matrix[index1 + i][index2 + j]
+
+                diff = np.linalg.norm(current_pixel - comparing_pixel)
+
+                if diff < threshold:
+                    neighbours_cnt += 1
+                    neighbour_pixels.append((i + index1 - eps, j + index2 - eps))
+        return neighbours_cnt, neighbour_pixels
+
+
+
 
 def main():
     np.set_printoptions(threshold=np.inf)
@@ -68,7 +131,17 @@ def main():
     preprocessed_func = PreProcessing(cell_images)
     preprocessed_output = preprocessed_func.three_dimensional_array_refactor(np.array(cell_images))
     print(preprocessed_output.shape)
-    print(len(cell_images))
+
+    dbscan = DBSCAN()
+    dbscan.process(preprocessed_output, 1, 5, 0.1)
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
